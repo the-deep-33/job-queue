@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: "job_queue"
+      POSTGRES_USER: "admin"
+      POSTGRES_PASSWORD: "admin"
+
+    volumes:
+      - job_queue_db:/var/lib/postgresql/data
+
+
+volumes:
+  job_queue_db:
