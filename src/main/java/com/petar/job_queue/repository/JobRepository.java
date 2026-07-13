@@ -1,8 +1,11 @@
 package com.petar.job_queue.repository;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.petar.job_queue.dto.CreateJobRequest;
+import com.petar.job_queue.model.JobRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
@@ -28,4 +31,25 @@ public class JobRepository {
         );
         return id;
     }
+
+    public JobRecord claim(String worker_id)
+    {
+        String query = "UPDATE jobs SET worker_id = ?, status = 'running' WHERE id = (SELECT id FROM jobs " +
+                "WHERE status='pending' ORDER BY created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING id, type, payload";
+
+        return template.query(
+                query, rs -> {
+                    if(rs.next())
+                    {
+                        UUID id = rs.getObject("id", UUID.class);
+                        String type = rs.getString("type");
+                        JsonNode payload = rs.getObject("payload", JsonNode.class);
+                        JobRecord job = new JobRecord(id, type, payload);
+                        return job;
+                    }
+                    return null;
+                }, worker_id
+        );
+    }
+
 }
