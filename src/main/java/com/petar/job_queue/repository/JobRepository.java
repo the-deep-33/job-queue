@@ -1,6 +1,8 @@
 package com.petar.job_queue.repository;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.petar.job_queue.dto.CreateJobRequest;
 import com.petar.job_queue.model.JobRecord;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,10 +16,12 @@ import java.util.UUID;
 public class JobRepository {
 
     private final JdbcTemplate template;
+    private final ObjectMapper mapper;
 
     @Autowired
-    public JobRepository(JdbcTemplate template) {
+    public JobRepository(JdbcTemplate template, ObjectMapper mapper) {
         this.template = template;
+        this.mapper = mapper;
     }
 
     public UUID insertJobRow(CreateJobRequest jobRequest)
@@ -43,13 +47,31 @@ public class JobRepository {
                     {
                         UUID id = rs.getObject("id", UUID.class);
                         String type = rs.getString("type");
-                        JsonNode payload = rs.getObject("payload", JsonNode.class);
+                        String payload_str = rs.getString("payload");
+                        JsonNode payload = null;
+                        try {
+                            payload = mapper.readTree(payload_str);
+                        } catch (JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        }
                         JobRecord job = new JobRecord(id, type, payload);
                         return job;
                     }
                     return null;
                 }, worker_id
         );
+    }
+
+    public void markSucceeded(UUID job_id)
+    {
+        String query = "UPDATE jobs SET status = 'succeeded' WHERE id = ?";
+        template.update(query, job_id);
+    }
+
+    public void markDead(UUID job_id, String last_error)
+    {
+        String query = "UPDATE jobs SET status = 'dead', last_error = ? WHERE id = ?";
+        template.update(query, last_error, job_id);
     }
 
 }
