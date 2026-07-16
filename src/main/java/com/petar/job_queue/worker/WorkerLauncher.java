@@ -23,7 +23,7 @@ public class WorkerLauncher implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        int worker_number = 1;
+        int worker_number = 10;
         String host_name = Inet4Address.getLocalHost().getCanonicalHostName();
         for(int i = 0; i < worker_number; ++i)
         {
